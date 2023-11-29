@@ -2,16 +2,14 @@ using LinearAlgebra
 using RecursiveArrayTools
 using DifferentialEquations
 using ProgressLogging
+using CairoMakie
 # using Kronecker
 
 include("../matrices.jl")
 include("../matricesmultimode.jl")
 include("../multimodeproblemtype.jl")
 
-Nmodes = 6
-n = 1
-orders = n*ones(Int, Nmodes)
-prob = CoherentTDVP(orders)
+
 
 function liouvillian!(prob::CoherentTDVP, α, B, p)
     #Decoupled system for checks
@@ -49,15 +47,21 @@ function liouvillian!(prob::CoherentTDVP, α, B, p)
                     J, JdagJ, prob.order; rates=κ)
 end
 
+
+Nmodes = 6
+n = 2
+orders = n*ones(Int, Nmodes)
+prob = CoherentTDVP(orders)
+
 # Fscaled = 1.4
-F = 1.5695 #sqrt(Nmodes) * Fscaled
+F = 1.61#1.5695 #sqrt(Nmodes) * Fscaled
 
 # Uscaled = 1
 U = 0.1 #Uscaled/Nmodes
 
 Δ = 0.1
 
-J = 0.9
+J = 0.9*2
 
 p = Dict("κ" => ones(Nmodes), 
     "F" => F*ones(Nmodes),
@@ -107,8 +111,22 @@ for (i, s) ∈ enumerate(sol.u)
     exp_a_3_ord_1[i] = exp_val(α_i, B, prob, k)
 end
 
+using LaTeXStrings
 fig = Figure()
-ax = Axis(fig[1,1])
-lines!(ax, real.(exp_a_3_ord_1), imag.(exp_a_3_ord_1))
-# lines!(ax, real.(exp_a_3_ord_2), imag.(exp_a_3_ord_2))
-# scatter!(ax,real(exp_a_3[end])/sqrt(Nmodes), imag.(exp_a_3[end])/sqrt(Nmodes) )
+ax = Axis(fig[1,1],
+    xlabel = L"\mathrm{Re}(\langle \hat{a}_3\rangle)",
+    ylabel = L"\mathrm{Im}(\langle \hat{a}_3\rangle)",
+    title = "Bose-Hubbard model",
+    backgroundcolor = :transparent)
+lines!(ax, real.(exp_a_3_ord_1), imag.(exp_a_3_ord_1), label = L"n=1")
+# lines!(ax, real.(exp_a_3_ord_2), imag.(exp_a_3_ord_2), label = L"n=2")
+
+#make Legend
+axislegend(ax)
+
+#Show information in a box
+# Number of modes, F, U, Δ, J
+text!(ax, 0.0, 1.0; 
+    text="N = $Nmodes \nF = $F \nU = $U \nΔ = $Δ \nJ = $J",
+    align = (:left, :top))
+# N = $Nmodes \n F = $F \n U = $U \n Δ = $Δ \n J = $J
