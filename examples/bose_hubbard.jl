@@ -25,7 +25,7 @@ function liouvillian!(prob::CoherentTDVP, α, B, p)
         a!(prob.a[k], prob.S[k], α[k])
         adag!(prob.ad[k], prob.S[k], α[k])
         ad_a!(prob.ad_a[k], prob.S[k], α[k])
-        ad2_a2!(prob.a2[k], prob.S[k], α[k])
+        ad2_a2!(prob.ad2_a2[k], prob.S[k], α[k])
     end
 
     prob.H .= 0
@@ -43,29 +43,29 @@ function liouvillian!(prob::CoherentTDVP, α, B, p)
     end
     J = [kron_with(prob.S, prob.a[k], k) for k ∈ eachindex(prob.order)]
     JdagJ = [kron_with(prob.S, prob.ad_a[k], k) for k ∈ eachindex(prob.order)]
-    lmatrix_efficient!(prob.L, B, reduce(kron, prob.S), prob.H, 
+    lmatrix_efficient!(prob.L, B, prob.Skron, prob.H, 
                     J, JdagJ, prob.order; rates=κ)
 end
 
 
-Nmodes = 6
+Nmodes = 3
 n = 2
 orders = n*ones(Int, Nmodes)
 prob = CoherentTDVP(orders)
 
-# Fscaled = 1.4
-F = 1.61#1.5695 #sqrt(Nmodes) * Fscaled
+Fscaled = 2.2
+# F = sqrt(Nmodes) * Fscaled
 
-# Uscaled = 1
-U = 0.1 #Uscaled/Nmodes
+Uscaled = 1.0
+# U = 0.1 #Uscaled/Nmodes
 
-Δ = 0.1
+Δ = 3.0
 
-J = 0.9*2
+J = 1.0*2
 
 p = Dict("κ" => ones(Nmodes), 
-    "F" => F*ones(Nmodes),
-    "U" => U*ones(Nmodes),
+    "F" => Fscaled*ones(Nmodes),
+    "U" => Uscaled*ones(Nmodes),
     "Δ" => Δ*ones(Nmodes),
     "J" => J*ones(Nmodes-1))
 
@@ -74,11 +74,13 @@ t_list = 10 .^ (range(log10(1e-3), log10(tmax), 500))
 
 
 # Initial state 
-α = zeros(ComplexF64, Nmodes) #.+ 1e-12
+# α = zeros(ComplexF64, Nmodes) #.+ 1e-12
+α = sol.u[end].x[1]
 Bindividual = [zeros(ComplexF64, o, o) for o ∈ prob.order]
 for k ∈ eachindex(prob.order)
     Bindividual[k][1,1] = 1
 end
+
 B = reduce(kron, Bindividual)
 
 u0 = ArrayPartition(α, B)
@@ -89,10 +91,19 @@ u0 = ArrayPartition(α, B)
 
 ode_problem = ODEProblem{true}(prob, u0, (0.0, tmax), p)
 
-sol = solve(ode_problem, Tsit5(), abstol = 1e-6, reltol = 1e-6, dt=1e-8, saveat=t_list, progress = true)
+sol = solve(ode_problem, Tsit5(), abstol = 1e-6, reltol = 1e-6, dt=1e-8, saveat=t_list, progress = true, callback = cb)
 
+# Define a condition for the callback (e.g., at every time step)
+condition(u, t, integrator) = true  # This condition is always true; adjust as needed
 
+# Define the action to be taken when the condition is met
+function affect!(integrator)
+    println("Time: ", integrator.t, " | α: ", integrator.u.x[1])
+    # Additional actions can be added here
+end
 
+# Create the callback
+cb = DiscreteCallback(condition, affect!)
 
 exp_a_3_ord_1 = Array{ComplexF64}(undef, length(sol))
 
@@ -104,7 +115,7 @@ function exp_val(αvec, B, prob, k)
     return tr(getindexmat(kron_with(prob.S, prob.a[k], k), prob.order)*B) / tr(getindexmat(reduce(kron, prob.S), prob.order) *B)
 end
 
-k = 3
+k = 1
 for (i, s) ∈ enumerate(sol.u)
     α_i = s.x[1]
     B_i = s.x[2]
@@ -118,7 +129,7 @@ ax = Axis(fig[1,1],
     ylabel = L"\mathrm{Im}(\langle \hat{a}_3\rangle)",
     title = "Bose-Hubbard model",
     backgroundcolor = :transparent)
-lines!(ax, real.(exp_a_3_ord_1), imag.(exp_a_3_ord_1), label = L"n=1")
+lines!(ax, real.(exp_a_3_ord_1), imag.(exp_a_3_ord_1), label = L"n=2")
 # lines!(ax, real.(exp_a_3_ord_2), imag.(exp_a_3_ord_2), label = L"n=2")
 
 #make Legend
@@ -127,6 +138,6 @@ axislegend(ax)
 #Show information in a box
 # Number of modes, F, U, Δ, J
 text!(ax, 0.0, 1.0; 
-    text="N = $Nmodes \nF = $F \nU = $U \nΔ = $Δ \nJ = $J",
+    text="N = $Nmodes \nF = $Fscaled \nU = $Uscaled \nΔ = $Δ \nJ = $J",
     align = (:left, :top))
 # N = $Nmodes \n F = $F \n U = $U \n Δ = $Δ \n J = $J
