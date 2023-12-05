@@ -48,6 +48,7 @@ function (prob::CoherentTDVP)(du, u, p, t)
 
     # vectors of α
     α = u.x[1]
+    # println(α)
     # matrix B
     B = u.x[2]
 
@@ -61,7 +62,7 @@ function (prob::CoherentTDVP)(du, u, p, t)
 
     # compute derivative of alpha
     Threads.@threads for k ∈ eachindex(prob.order)
-        dα[k] = alpha_derivative(prob, B, k; regnum=1e-7, regden=1e-8)
+        dα[k] = alpha_derivative(prob, B, k; regnum=1e-14, regden=1e-8)
     end
 
     # update derivative of B
