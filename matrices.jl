@@ -235,13 +235,13 @@ end
 Return lower row of S^(left)*S⁻¹, given an order `ord` and coherent field amplitude `α`.
 """
 function polyα(ord, α)
-    return [binomial(ord, k-1)*α^(ord-k+1)*(-1)^k for k ∈ 1:ord]
+    return (-1)^ord * [binomial(ord, k-1)*α^(ord-k+1)*(-1)^k for k ∈ 1:ord]
 end
 
 function polyα!(polα, ord, α)
     @inbounds for k ∈ 1:ord
         # This could be better optimized
-        polα[k] = binomial(ord, k-1)*α^(ord-k+1)*(-1)^k
+        polα[k] = (-1)^ord * binomial(ord, k-1)*α^(ord-k+1)*(-1)^k
     end
 end
 
